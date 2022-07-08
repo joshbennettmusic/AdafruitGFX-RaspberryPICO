@@ -241,6 +241,8 @@ void Adafruit_ILI9341::setAddrWindow(uint16_t x1, uint16_t y1, uint16_t w,
   writeCommand(ILI9341_RAMWR); // Write to RAM
 }
 
+
+
 /**************************************************************************/
 /*!
     @brief  Read 8 bits of data from ILI9341 configuration memory. NOT from RAM!

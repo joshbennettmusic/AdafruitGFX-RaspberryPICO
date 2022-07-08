@@ -14,8 +14,8 @@
  *    @param  theSPI The SPI bus to use, defaults to &theSPI
  */
 Adafruit_SPIDevice::Adafruit_SPIDevice(int8_t cspin, int8_t sck, int8_t miso, int8_t mosi,
-                                       uint32_t freq, BusIOBitOrder dataOrder,
-                                       uint8_t dataMode, spi_inst_t *theSPI)
+                                       uint32_t freq, spi_inst_t *theSPI, BusIOBitOrder dataOrder,
+                                       uint8_t dataMode)
 {
   _cs = cspin;
   _sck = sck;
@@ -84,6 +84,13 @@ bool Adafruit_SPIDevice::begin(void)
 
   _begun = true;
   return true;
+}
+
+void Adafruit_SPIDevice::setWordLength(uint8_t len){
+  if (_spi)
+  { // hardware SPI
+    spi_set_format(_spi, len, SPI_CPOL_1, SPI_CPHA_1, SPI_MSB_FIRST);
+  }
 }
 
 /*!
@@ -165,13 +172,9 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len)
 
         if (_miso != -1)
         {
-#ifdef BUSIO_USE_FAST_PINIO
-          if (*misoPort & misoPinMask)
-          {
-#else
+
           if (digitalRead(_miso))
           {
-#endif
             reply |= b;
           }
         }
@@ -216,13 +219,9 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len)
 
         if (_miso != -1)
         {
-#ifdef BUSIO_USE_FAST_PINIO
-          if (*misoPort & misoPinMask)
-          {
-#else
           if (digitalRead(_miso))
           {
-#endif
+
             reply |= b;
           }
         }
@@ -234,6 +233,18 @@ void Adafruit_SPIDevice::transfer(uint8_t *buffer, size_t len)
     }
   }
   return;
+}
+
+void Adafruit_SPIDevice::transfer16(uint16_t *buffer, size_t len)
+{
+  if (_spi)
+  {
+    // hardware SPI is easy
+    setWordLength(16);
+    spi_write16_blocking(_spi, buffer, len);
+    setWordLength(8);
+    return;
+  }
 }
 
 /*!

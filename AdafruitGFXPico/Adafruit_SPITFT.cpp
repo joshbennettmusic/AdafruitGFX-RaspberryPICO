@@ -237,26 +237,32 @@ void Adafruit_SPITFT::writePixels(uint16_t *colors, uint32_t len, bool block,
 
   // All other cases (bitbang SPI or non-DMA hard SPI or parallel),
   // use a loop with the normal 16-bit data write function:
+  if (true) {
 
-  if (!bigEndian)
-  {
-    while (len--)
+      _spi->transfer16(colors, len);
+
+  } 
+  else {
+    if (!bigEndian)
     {
-      SPI_WRITE16(*colors++);
+      while (len--)
+      {
+        SPI_WRITE16(*colors++);
+      }
     }
-  }
-  else
-  {
-    // Well this is awkward. SPI_WRITE16() was designed for little-endian
-    // hosts and big-endian displays as that's nearly always the typical
-    // case. If the bigEndian flag was set, data is already in display's
-    // order...so each pixel needs byte-swapping before being issued.
-    // Rather than having a separate big-endian SPI_WRITE16 (adding more
-    // bloat), it's preferred if calling function is smart and only uses
-    // bigEndian where DMA is supported. But we gotta handle this...
-    while (len--)
+    else
     {
-      SPI_WRITE16(__builtin_bswap16(*colors++));
+      // Well this is awkward. SPI_WRITE16() was designed for little-endian
+      // hosts and big-endian displays as that's nearly always the typical
+      // case. If the bigEndian flag was set, data is already in display's
+      // order...so each pixel needs byte-swapping before being issued.
+      // Rather than having a separate big-endian SPI_WRITE16 (adding more
+      // bloat), it's preferred if calling function is smart and only uses
+      // bigEndian where DMA is supported. But we gotta handle this...
+      while (len--)
+      {
+        SPI_WRITE16(__builtin_bswap16(*colors++));
+      }
     }
   }
 }
@@ -293,6 +299,11 @@ void Adafruit_SPITFT::writeColor(uint16_t color, uint32_t len)
     _spi->transfer(buf, 2);
   }
 }
+
+void Adafruit_SPITFT::writeCanvas16(GFXcanvas16 *canvas, uint16_t x, uint16_t y){
+  drawRGBBitmap(x,y,canvas->getBuffer(),canvas->width(), canvas->height());
+}
+
 
 /*!
     @brief  Draw a filled rectangle to the display. Not self-contained;
@@ -692,7 +703,23 @@ void Adafruit_SPITFT::pushColor(uint16_t color)
   endWrite();
 }
 
+/**************************************************************************/
 /*!
+    @brief   fast fill routine simlar to writeBitmap
+    @param   color RGB 565 color
+*/
+/**************************************************************************/
+void Adafruit_SPITFT::fillScreen(uint16_t color) {
+  startWrite();
+  setAddrWindow(0, 0, _width, _height); // whole screen
+  int16_t pixels = _width * _height;
+  while (pixels--)
+  { 
+    SPI_WRITE16(color);
+  }
+}
+
+/*! 
     @brief  Draw a 16-bit image (565 RGB) at the specified (x,y) position.
             For 16-bit display devices; no color reduction performed.
             Adapted from https://github.com/PaulStoffregen/ILI9341_t3
@@ -721,31 +748,47 @@ void Adafruit_SPITFT::drawRGBBitmap(int16_t x, int16_t y, uint16_t *pcolors,
 
   int16_t bx1 = 0, by1 = 0, // Clipped top-left within bitmap
       saveW = w;            // Save original bitmap width value
+  
+  bool clipped = false;     // speed up the write by doing the whole buffer if possible
+
   if (x < 0)
   { // Clip left
     w += x;
     bx1 = -x;
     x = 0;
+    clipped = true;
   }
   if (y < 0)
   { // Clip top
     h += y;
     by1 = -y;
     y = 0;
+    clipped = true;
   }
-  if (x2 >= _width)
-    w = _width - x; // Clip right
-  if (y2 >= _height)
+  if (x2 >= _width) {
+     w = _width - x; // Clip right
+     clipped = true;
+  }
+   
+  if (y2 >= _height) {
     h = _height - y; // Clip bottom
+    clipped = true;
+  }
+    
 
   pcolors += by1 * saveW + bx1; // Offset bitmap ptr to clipped top-left
   startWrite();
   setAddrWindow(x, y, w, h); // Clipped area
-  while (h--)
-  {                          // For each (clipped) scanline...
-    writePixels(pcolors, w); // Push one (clipped) row
-    pcolors += saveW;        // Advance pointer by one full (unclipped) line
+  if (clipped) {
+    while (h--)
+    {                          // For each (clipped) scanline...
+      writePixels(pcolors, w); // Push one (clipped) row
+      pcolors += saveW;        // Advance pointer by one full (unclipped) line
+    }
+  } else {
+    writePixels(pcolors, w * h);
   }
+
   endWrite();
 }
 

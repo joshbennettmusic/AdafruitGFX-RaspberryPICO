@@ -135,6 +135,10 @@ public:
   void writePixels(uint16_t *colors, uint32_t len, bool block = true,
                    bool bigEndian = false);
   void writeColor(uint16_t color, uint32_t len);
+
+  void writeCanvas16(GFXcanvas16 *canvas, uint16_t x, uint16_t y); 
+
+
   void writeFillRect(int16_t x, int16_t y, int16_t w, int16_t h,
                      uint16_t color);
   void writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
@@ -165,7 +169,7 @@ public:
   // this is used anymore (BMP demos might've used it?) but is provided
   // for backward compatibility, consider it deprecated:
   void pushColor(uint16_t color);
-
+  void fillScreen(uint16_t color);
   using Adafruit_GFX::drawRGBBitmap; // Check base class first
   void drawRGBBitmap(int16_t x, int16_t y, uint16_t *pcolors, int16_t w,
                      int16_t h);

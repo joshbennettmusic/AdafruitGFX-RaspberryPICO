@@ -15,12 +15,13 @@ typedef enum _BitOrder {
 class Adafruit_SPIDevice {
 public:
   Adafruit_SPIDevice(int8_t cspin, int8_t sck, int8_t miso, int8_t mosi,
-                     uint32_t freq = 1000000,
+                     uint32_t freq = 1000000, spi_inst_t *theSPI = spi_default,
                      BusIOBitOrder dataOrder = SPI_BITORDER_MSBFIRST,
-                     uint8_t dataMode = 0, spi_inst_t *theSPI = spi_default);
+                     uint8_t dataMode = 0);
   ~Adafruit_SPIDevice();
   void setSpeed(uint32_t newSpeed);
   bool begin(void);
+  void setWordLength(uint8_t len);
   bool read(uint8_t *buffer, size_t len, uint8_t sendvalue = 0xFF);
   bool write(uint8_t *buffer, size_t len, uint8_t *prefix_buffer = NULL,
              size_t prefix_len = 0);
@@ -30,6 +31,7 @@ public:
 
   uint8_t transfer(uint8_t send);
   void transfer(uint8_t *buffer, size_t len);
+  void transfer16(uint16_t *buffer, size_t len);
   void beginTransaction(void);
   void endTransaction(void);
 
