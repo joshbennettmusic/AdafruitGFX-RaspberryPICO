@@ -117,7 +117,7 @@ void Adafruit_ILI9341::begin(uint32_t freq) {
 
   if (!freq)
     freq = SPI_DEFAULT_FREQ;
-  initSPI(freq);
+    actual_baudrate = initSPI(freq);
 
   if (_rst < 0) {                 // If no hardware reset pin...
     sendCommand(ILI9341_SWRESET); // Engage software reset

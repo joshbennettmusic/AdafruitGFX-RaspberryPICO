@@ -81,6 +81,8 @@ class Print
     size_t println(double, int = 2);
     size_t println(void);
 
+    void printf(const char *format, ...);
+
     virtual void flush() { /* Empty implementation for backward compatibility */ }
 };
 

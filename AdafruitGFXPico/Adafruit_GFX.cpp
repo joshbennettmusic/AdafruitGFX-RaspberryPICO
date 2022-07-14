@@ -103,10 +103,13 @@ inline uint8_t *pgm_read_bitmap_ptr(const GFXfont *gfxFont) {
 */
 /**************************************************************************/
 Adafruit_GFX::Adafruit_GFX(int16_t w, int16_t h) : WIDTH(w), HEIGHT(h) {
-  _width = WIDTH;
-  _height = HEIGHT;
+  _width = textbox_w = WIDTH;
+  _height = textbox_h = HEIGHT;
   rotation = 0;
-  cursor_y = cursor_x = 0;
+  cursor_y = cursor_x = textbox_x = textbox_y = 0;
+
+  para_alignment_x = alignLeft;
+  para_alignment_y = alignTop;
   textsize_x = textsize_y = 1;
   textcolor = textbgcolor = 0xFFFF;
   wrap = true;
@@ -1280,6 +1283,135 @@ size_t Adafruit_GFX::write(uint8_t c) {
   return 1;
 }
 
+  /**********************************************************************/
+  /*!
+    @brief  Set paragraph (and text) cursor location
+    @param  x    X coordinate in pixels
+    @param  y    Y coordinate in pixels
+    @param  w    width in pixels (positive to the right of x)
+    @param  h    height in pixels (positive below y)
+  */
+  /**********************************************************************/
+void Adafruit_GFX::setTextBox(int16_t x, int16_t y, int16_t w, int16_t h) {
+  if (w < 0) {
+    textbox_x = x + w;
+    textbox_w = -w;
+  } else {
+    textbox_x = x;
+    textbox_w = w;
+  }
+  if (h < 0) {
+    textbox_y = y + h;
+    textbox_h = -h;
+  } else {
+    textbox_y = y;
+    textbox_h = h;
+  }
+  
+}
+/**************************************************************************/
+/*!
+    @brief  Overload of write, used to support print() with paragraph alignment
+    @param  buffer pointer to text buffer
+    @param  size size of the string (not really necessary as string will end in /0)
+    Note: appends a new line on the end if one is missing.
+*/
+/**************************************************************************/
+size_t Adafruit_GFX::write(const uint8_t *buffer, size_t size) {
+  size_t n = 0;
+  uint8_t len = 0;
+  uint8_t c; 
+  //int16_t x1 = 0, y1 = 0;
+  int16_t cursor_yoffset; // baseline shift +6 for gfxFont, -6 for built-in font
+  int16_t cursor_xoffset = 0;
+  int16_t lineheight, totalheight;
+  int16_t linewidth = 0, trailing_space = 0;
+  //int16_t minx = 0x7FFF, miny = 0x7FFF, maxx = -1, maxy = -1; // Bound rect
+  // Bound rect is intentionally initialized inverted, so 1st char sets it
+
+  // find out height of each line of selected font
+  if (gfxFont) {
+    //GFXglyph *glyph = pgm_read_glyph_ptr(gfxFont, '[' - pgm_read_byte(&gfxFont->first)); 
+    lineheight = textsize_y * gfxFont->yAdvance;
+    cursor_yoffset = 6;
+  } else {
+    // default font
+    lineheight = textsize_y * 8;
+    cursor_yoffset = -6; 
+  }
+
+  totalheight = lineheight;
+  //multiply that by number of lines: 1 + number of '\n' characters in the string (except the last character)
+  for (int16_t i = 0; i < size - 1; i++ ) {
+    if (buffer[i] == '\n') {
+      totalheight += lineheight;
+    }
+  }
+  //getTextBounds(buffer,0, 0, &x1, &y1, &w, &h );
+
+  // can now set vertical cursor position based on total height 
+  switch (para_alignment_y) {
+    case alignTop :
+      cursor_y = textbox_y + lineheight - cursor_yoffset;
+      break;
+    case alignMiddle :
+      cursor_y = textbox_y + lineheight + (textbox_h - totalheight)/2 - cursor_yoffset;
+      break;
+    case alignBottom :
+      cursor_y = textbox_y + lineheight + textbox_h - totalheight - cursor_yoffset;
+      break;
+    default :
+      break;
+  }
+
+  for (int16_t i = 0; i <= size; i++ ) {
+    i == size ? c = '\n' : c = buffer[i - len];
+    //charBounds(c, &x1, &y1, &minx, &miny, &maxx, &maxy);
+    if ( c == '\n' ) {
+      len = i - len + 1;
+      // reached the end of a line
+      // now know line width
+      linewidth -= (trailing_space + cursor_xoffset);
+      switch (para_alignment_x) {
+        case alignLeft :
+          cursor_x = textbox_x - cursor_xoffset;
+          break;
+        case alignCenter :
+          cursor_x = textbox_x + (textbox_w - linewidth)/2 - cursor_xoffset;
+          break;
+        case alignRight :
+          cursor_x = textbox_x + textbox_w - linewidth - cursor_xoffset - 1;
+        default :
+          break;
+      }
+      n += Print::write(buffer, len);
+      buffer += len;
+      // minx = miny = 0x7FFF; 
+      // maxx = maxy = -1; 
+      // x1 = y1 = 0;
+      linewidth = 0;
+
+    } else {
+      if (gfxFont) {
+        GFXglyph *glyph = pgm_read_glyph_ptr(gfxFont, c - pgm_read_byte(&gfxFont->first));
+        if (i - len == 0) {
+          // make sure to include x offset
+          cursor_xoffset = textsize_x * pgm_read_byte(&glyph->xOffset);
+        }
+        linewidth += textsize_x * glyph->xAdvance;
+        trailing_space = textsize_x * (glyph->xAdvance - glyph->width);
+      } else {
+        cursor_xoffset = 0;
+        linewidth += textsize_x * 6;
+        trailing_space = 1;
+      }
+      
+    }
+    
+  }
+  
+  return n;
+}
 /**************************************************************************/
 /*!
     @brief   Set text 'magnification' size. Each increase in s makes 1 pixel
@@ -1440,7 +1572,7 @@ void Adafruit_GFX::charBounds(unsigned char c, int16_t *x, int16_t *y,
     @param  h    The boundary height, returned by function
 */
 /**************************************************************************/
-void Adafruit_GFX::getTextBounds(const char *str, int16_t x, int16_t y,
+void Adafruit_GFX::getTextBounds(const uint8_t *str, int16_t x, int16_t y,
                                  int16_t *x1, int16_t *y1, uint16_t *w,
                                  uint16_t *h) {
 

@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include "stdarg.h"
 
 #include "Print.h"
 
@@ -164,6 +165,17 @@ size_t Print::println(double num, int digits)
   n += println();
   return n;
 }
+
+char printBuf[100];
+void Print::printf(const char *format, ...)
+{
+  va_list args;
+	va_start(args, format);
+	vsprintf(printBuf, format, args);
+	print(printBuf);
+	va_end(args);
+}
+
 
 // Private Methods /////////////////////////////////////////////////////////////
 

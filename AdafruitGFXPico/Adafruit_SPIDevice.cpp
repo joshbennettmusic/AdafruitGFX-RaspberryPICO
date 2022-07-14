@@ -466,3 +466,7 @@ void Adafruit_SPIDevice::setSpeed(uint32_t newSpeed){
   _freq = newSpeed;
   spi_set_baudrate(_spi, _freq);
 }
+
+uint32_t Adafruit_SPIDevice::getSpeed(void) {
+  return spi_get_baudrate(_spi);
+}

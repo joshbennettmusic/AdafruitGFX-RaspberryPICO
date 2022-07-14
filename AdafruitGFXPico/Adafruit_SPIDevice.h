@@ -20,6 +20,7 @@ public:
                      uint8_t dataMode = 0);
   ~Adafruit_SPIDevice();
   void setSpeed(uint32_t newSpeed);
+  uint32_t getSpeed(void);
   bool begin(void);
   void setWordLength(uint8_t len);
   bool read(uint8_t *buffer, size_t len, uint8_t sendvalue = 0xFF);

@@ -88,7 +88,7 @@ Adafruit_SPITFT::Adafruit_SPITFT(uint16_t w, uint16_t h, Adafruit_SPIDevice *spi
             could probably be made private...quite a few class functions
             were generously put in the public section.
 */
-void Adafruit_SPITFT::initSPI(uint32_t freq, uint8_t spiMode)
+uint32_t Adafruit_SPITFT::initSPI(uint32_t freq, uint8_t spiMode)
 {
   if (!freq)
     freq = DEFAULT_SPI_FREQ; // If no freq specified, use default
@@ -119,6 +119,7 @@ void Adafruit_SPITFT::initSPI(uint32_t freq, uint8_t spiMode)
     digitalWrite(_rst, HIGH);
     delay(200);
   }
+  return _spi->getSpeed();
 }
 
 /*!
@@ -712,7 +713,7 @@ void Adafruit_SPITFT::pushColor(uint16_t color)
 void Adafruit_SPITFT::fillScreen(uint16_t color) {
   startWrite();
   setAddrWindow(0, 0, _width, _height); // whole screen
-  int16_t pixels = _width * _height;
+  int32_t pixels = _width * _height;
   while (pixels--)
   { 
     SPI_WRITE16(color);

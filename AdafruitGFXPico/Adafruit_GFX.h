@@ -4,6 +4,10 @@
 #include "gfxfont.h"
 #include "Print.h"
 
+
+enum paraAlignX_t {alignLeft, alignCenter, alignRight};
+enum paraAlignY_t {alignTop, alignMiddle, alignBottom};
+
 /// A generic graphics superclass that can handle all sorts of drawing. At a
 /// minimum you can subclass and provide drawPixel(). At a maximum you can do a
 /// ton of overriding to optimize. Used for any/all Adafruit displays!
@@ -103,7 +107,7 @@ public:
                 uint16_t bg, uint8_t size);
   void drawChar(int16_t x, int16_t y, unsigned char c, uint16_t color,
                 uint16_t bg, uint8_t size_x, uint8_t size_y);
-  void getTextBounds(const char *string, int16_t x, int16_t y, int16_t *x1,
+  void getTextBounds(const uint8_t *string, int16_t x, int16_t y, int16_t *x1,
                      int16_t *y1, uint16_t *w, uint16_t *h);
   void setTextSize(uint8_t s);
   void setTextSize(uint8_t sx, uint8_t sy);
@@ -120,6 +124,10 @@ public:
     cursor_x = x;
     cursor_y = y;
   }
+
+
+  void setTextBox(int16_t x, int16_t y, int16_t w, int16_t h);
+
 
   /**********************************************************************/
   /*!
@@ -171,6 +179,8 @@ public:
   using Print::write;
   virtual size_t write(uint8_t);
 
+  size_t write(const uint8_t *buffer, size_t size);
+
   /************************************************************************/
   /*!
     @brief      Get width of the display, accounting for current rotation
@@ -213,6 +223,26 @@ public:
   /************************************************************************/
   int16_t getCursorY(void) const { return cursor_y; };
 
+  // get current cursor position (get rotation safe maximum values,
+  // using: width() for x, height() for y)
+  /************************************************************************/
+  /*!
+    @brief  Get text cursor X location
+    @returns    X coordinate in pixels
+  */
+  /************************************************************************/
+  int16_t getParaCursorX(void) const { return textbox_x; }
+
+  /************************************************************************/
+  /*!
+    @brief      Get text cursor Y location
+    @returns    Y coordinate in pixels
+  */
+  /************************************************************************/
+  int16_t getParaCursorY(void) const { return textbox_y; };
+
+  void setParaAlignment(paraAlignX_t align_x, paraAlignY_t align_y) {para_alignment_x = align_x; para_alignment_y = align_y;};
+
 protected:
   void charBounds(unsigned char c, int16_t *x, int16_t *y, int16_t *minx,
                   int16_t *miny, int16_t *maxx, int16_t *maxy);
@@ -220,6 +250,10 @@ protected:
   int16_t HEIGHT;       ///< This is the 'raw' display height - never changes
   int16_t _width;       ///< Display width as modified by current rotation
   int16_t _height;      ///< Display height as modified by current rotation
+  int16_t textbox_x;    ///< reference x for paragraph alignment
+  int16_t textbox_y;    ///< reference y for paragraph alignment
+  int16_t textbox_w;    ///< reference x for paragraph alignment
+  int16_t textbox_h;    ///< reference y for paragraph alignment
   int16_t cursor_x;     ///< x location to start print()ing text
   int16_t cursor_y;     ///< y location to start print()ing text
   uint16_t textcolor;   ///< 16-bit background color for print()
@@ -230,6 +264,8 @@ protected:
   bool wrap;            ///< If set, 'wrap' text at right edge of display
   bool _cp437;          ///< If set, use correct CP437 charset (default is off)
   GFXfont *gfxFont;     ///< Pointer to special font
+  paraAlignX_t para_alignment_x;///<paragraph alignment
+  paraAlignY_t para_alignment_y;
 };
 
 /// A simple drawn button UI element
